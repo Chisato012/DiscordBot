@@ -20,6 +20,6 @@ Dự án này tham khảo từ nhiều nguồn khác nhau:
 
 ## 🏗️ Build tự động
 
-GitHub Actions sẽ publish Native AOT cho `win-x64` và `linux-x64` khi thay đổi mã nguồn bot, khi mở pull request, hoặc khi chạy thủ công từ tab **Actions**. Bản build được đính kèm vào mỗi workflow run dưới dạng artifact `.tar.gz` và được giữ 14 ngày.
+GitHub Actions tự tìm mọi file `.csproj` đặt trực tiếp trong một thư mục bot của `DiscordBot.Console/`, rồi publish theo cấu hình của chính project. Với cấu hình hiện tại, mỗi console bot được build Native AOT cho `win-x64` và `linux-x64` khi thay đổi mã nguồn bot, khi mở pull request, hoặc khi chạy thủ công từ tab **Actions**. Bản build được đính kèm vào mỗi workflow run dưới dạng artifact `.tar.gz` và được giữ 14 ngày.
 
-Danh sách bot và nền tảng build nằm trong `.github/ci-targets.json`. Khi thêm bot mới, thêm một mục vào `projects`; không cần tạo workflow mới. Nếu một GUI chưa tương thích Native AOT, đặt `publishAot` thành `false` cho project đó.
+Thêm console bot mới chỉ cần tạo project theo dạng `DiscordBot.Console/TenBot/TenBot.csproj`; không cần sửa workflow hay cấu hình build. Danh sách nhóm thư mục và nền tảng build nằm trong `.github/build-groups.json`. Khi thêm GUI, copy block `console`, đổi `name` và `directory` thành `gui` và `DiscordBot.GUI`, sau đó chọn các nền tảng GUI hỗ trợ. Một project không tương thích Native AOT chỉ cần không đặt `<PublishAot>true</PublishAot>` trong file `.csproj` của riêng nó.

@@ -6,7 +6,7 @@ on:
     paths:
       - 'DiscordBot.Console/**'
       - 'DiscordBot.GUI/**'
-      - '.github/ci-targets.json'
+      - '.github/build-groups.json'
       - '.github/workflows/publish-bots.yml'
       - 'Directory.Build.*'
       - 'Directory.Packages.props'
@@ -16,7 +16,7 @@ on:
     paths:
       - 'DiscordBot.Console/**'
       - 'DiscordBot.GUI/**'
-      - '.github/ci-targets.json'
+      - '.github/build-groups.json'
       - '.github/workflows/publish-bots.yml'
       - 'Directory.Build.*'
       - 'Directory.Packages.props'
@@ -40,13 +40,30 @@ jobs:
         name: Expand build manifest
         shell: bash
         run: |
-          matrix="$(jq -c '[.projects[] as $project | $project.targets[] | {
-            name: $project.name,
-            project: $project.project,
-            publishAot: $project.publishAot,
-            os: .os,
-            rid: .rid
-          }]' .github/ci-targets.json)"
+          matrix='[]'
+
+          while IFS= read -r group; do
+            group_name="$(jq -r '.name' <<< "$group")"
+            directory="$(jq -r '.directory' <<< "$group")"
+
+            if [[ ! -d "$directory" ]]; then
+              continue
+            fi
+
+            while IFS= read -r -d '' project; do
+              project_name="$(basename "$(dirname "$project")")"
+              artifact_name="${group_name}-$(tr '[:upper:]' '[:lower:]' <<< "$project_name")"
+
+              while IFS= read -r target; do
+                matrix="$(jq -cn \
+                  --argjson current "$matrix" \
+                  --arg name "$artifact_name" \
+                  --arg project "$project" \
+                  --argjson target "$target" \
+                  '$current + [($target + { name: $name, project: $project })]')"
+              done < <(jq -c '.targets[]' <<< "$group")
+            done < <(find "$directory" -mindepth 2 -maxdepth 2 -type f -name '*.csproj' -print0)
+          done < <(jq -c '.groups[]' .github/build-groups.json)
 
           test "$matrix" != "[]"
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
@@ -75,7 +92,6 @@ jobs:
             --configuration Release \
             --runtime "${{ matrix.rid }}" \
             --self-contained true \
-            --property:PublishAot=${{ matrix.publishAot }} \
             --output "$output_directory"
 
           mkdir -p dist

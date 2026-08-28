@@ -1,9 +1,8 @@
 {
-  "projects": [
+  "groups": [
     {
-      "name": "stock-bot-console",
-      "project": "DiscordBot.Console/StockBot/StockBot.csproj",
-      "publishAot": true,
+      "name": "console",
+      "directory": "DiscordBot.Console",
       "targets": [
         {
           "os": "windows-latest",
