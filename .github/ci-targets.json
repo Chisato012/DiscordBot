@@ -1,7 +1,7 @@
 {
   "projects": [
     {
-      "name": "stock-bot",
+      "name": "stock-bot-console",
       "project": "DiscordBot.Console/StockBot/StockBot.csproj",
       "publishAot": true,
       "targets": [
