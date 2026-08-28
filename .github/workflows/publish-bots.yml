@@ -1,0 +1,90 @@
+name: Build bot binaries
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'DiscordBot.Console/**'
+      - 'DiscordBot.GUI/**'
+      - '.github/ci-targets.json'
+      - '.github/workflows/publish-bots.yml'
+      - 'Directory.Build.*'
+      - 'Directory.Packages.props'
+      - 'global.json'
+      - 'NuGet.config'
+  pull_request:
+    paths:
+      - 'DiscordBot.Console/**'
+      - 'DiscordBot.GUI/**'
+      - '.github/ci-targets.json'
+      - '.github/workflows/publish-bots.yml'
+      - 'Directory.Build.*'
+      - 'Directory.Packages.props'
+      - 'global.json'
+      - 'NuGet.config'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  create-matrix:
+    name: Discover publish targets
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.targets.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - id: targets
+        name: Expand build manifest
+        shell: bash
+        run: |
+          matrix="$(jq -c '[.projects[] as $project | $project.targets[] | {
+            name: $project.name,
+            project: $project.project,
+            publishAot: $project.publishAot,
+            os: .os,
+            rid: .rid
+          }]' .github/ci-targets.json)"
+
+          test "$matrix" != "[]"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  publish:
+    name: ${{ matrix.name }} (${{ matrix.rid }})
+    needs: create-matrix
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.create-matrix.outputs.targets) }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up .NET 10 SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish Native AOT binary
+        shell: bash
+        run: |
+          output_directory="artifacts/${{ matrix.name }}/${{ matrix.rid }}"
+          dotnet publish "${{ matrix.project }}" \
+            --configuration Release \
+            --runtime "${{ matrix.rid }}" \
+            --self-contained true \
+            --property:PublishAot=${{ matrix.publishAot }} \
+            --output "$output_directory"
+
+          mkdir -p dist
+          tar -czf "dist/${{ matrix.name }}-${{ matrix.rid }}.tar.gz" -C "$output_directory" .
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.name }}-${{ matrix.rid }}
+          path: dist/${{ matrix.name }}-${{ matrix.rid }}.tar.gz
+          if-no-files-found: error
+          retention-days: 14

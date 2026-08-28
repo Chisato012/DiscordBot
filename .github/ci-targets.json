@@ -1,0 +1,19 @@
+{
+  "projects": [
+    {
+      "name": "stock-bot",
+      "project": "DiscordBot.Console/StockBot/StockBot.csproj",
+      "publishAot": true,
+      "targets": [
+        {
+          "os": "windows-latest",
+          "rid": "win-x64"
+        },
+        {
+          "os": "ubuntu-latest",
+          "rid": "linux-x64"
+        }
+      ]
+    }
+  ]
+}
