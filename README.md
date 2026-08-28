@@ -23,3 +23,12 @@ Dự án này tham khảo từ nhiều nguồn khác nhau:
 GitHub Actions tự tìm mọi file `.csproj` đặt trực tiếp trong một thư mục bot của `DiscordBot.Console/`, rồi publish theo cấu hình của chính project. Với cấu hình hiện tại, mỗi console bot được build Native AOT cho `win-x64` và `linux-x64` khi thay đổi mã nguồn bot, khi mở pull request, hoặc khi chạy thủ công từ tab **Actions**. Bản build được đính kèm vào mỗi workflow run dưới dạng artifact `.tar.gz` và được giữ 14 ngày.
 
 Thêm console bot mới chỉ cần tạo project theo dạng `DiscordBot.Console/TenBot/TenBot.csproj`; không cần sửa workflow hay cấu hình build. Danh sách nhóm thư mục và nền tảng build nằm trong `.github/build-groups.json`. Khi thêm GUI, copy block `console`, đổi `name` và `directory` thành `gui` và `DiscordBot.GUI`, sau đó chọn các nền tảng GUI hỗ trợ. Một project không tương thích Native AOT chỉ cần không đặt `<PublishAot>true</PublishAot>` trong file `.csproj` của riêng nó.
+
+## 📦 Phát hành phiên bản
+
+Mỗi bot có chuỗi phiên bản riêng và dùng tag theo dạng `tenbot-vMAJOR.MINOR.PATCH`, ví dụ `stockbot-v1.0.0` hoặc `stockbot-v1.1.0-beta.1`. Push tag sẽ chỉ build những project nằm trong thư mục bot tương ứng (ví dụ `StockBot`) và tự tạo GitHub Release với các binary của bot đó. Tag bản vá của StockBot không ảnh hưởng đến bot khác; một bot mới có thể bắt đầu từ `tenbot-v1.0.0`.
+
+```powershell
+git tag -a stockbot-v1.0.0 -m "StockBot v1.0.0"
+git push origin stockbot-v1.0.0
+```
