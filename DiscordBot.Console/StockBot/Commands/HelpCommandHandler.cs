@@ -7,8 +7,11 @@ public sealed class HelpCommandHandler
 {
     private const string HelpText =
         "**Các lệnh có sẵn**\n" +
-        "`/price symbols:<mã>` - Xem giá một hoặc nhiều mã, ngăn cách bằng dấu phẩy. Ví dụ: `/price CMC`.\n" +
-        "`/explain symbol:<mã>` - Giải thích các thuộc tính giá của một mã. Ví dụ: `/explain CMC`.\n" +
+        "`/price symbols:<mã>` - Xem giá một hoặc nhiều mã, ngăn cách bằng dấu phẩy.\n" +
+        "`/explain symbol:<mã>` - Giải thích các thuộc tính giá của một mã.\n" +
+        "`/auprice start symbols:<mã> [seconds:<giây>]` - Đăng kí báo giá tự động (mặc định và tối thiểu là 60 giây).\n" +
+        "`/auprice edit symbols:<mã> [seconds:<giây>]` - Thay đổi báo giá tự động của bạn.\n" +
+        "`/auprice cancel` - Dừng báo giá tự động của bạn.\n" +
         "`/help` - Hiển thị hướng dẫn này.";
 
     public Task HandleAsync(SlashCommandInteraction interaction)

@@ -25,6 +25,7 @@ class Program
             var priceCommandHandler = new PriceCommandHandler(stockPriceService);
             var explainCommandHandler = new ExplainCommandHandler(stockPriceService);
             var helpCommandHandler = new HelpCommandHandler();
+            using var autoPriceCommandHandler = new AUPriceCommandHandler(stockPriceService);
             using var client = new GatewayClient(new BotToken(botToken));
             client.Ready += async readyEventArgs =>
             {
@@ -62,6 +63,9 @@ class Program
                         break;
                     case "explain":
                         await explainCommandHandler.HandleAsync(slashCommand, client.Rest);
+                        break;
+                    case "auprice":
+                        await autoPriceCommandHandler.HandleAsync(slashCommand, client.Rest);
                         break;
                     case "help":
                         await helpCommandHandler.HandleAsync(slashCommand);

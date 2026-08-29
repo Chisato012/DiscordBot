@@ -71,6 +71,31 @@ public static class SlashCommandRegistrar
             }
         };
 
+        yield return new SlashCommandProperties("auprice", "Bật, sửa hoặc dừng báo giá tự động")
+        {
+            Options = new[]
+            {
+                new ApplicationCommandOptionProperties(ApplicationCommandOptionType.SubCommand, "start", "Đăng kí báo giá tự động")
+                {
+                    Options = GetAutoPriceOptions()
+                },
+                new ApplicationCommandOptionProperties(ApplicationCommandOptionType.SubCommand, "edit", "Thay đổi báo giá tự động của bạn")
+                {
+                    Options = GetAutoPriceOptions()
+                },
+                new ApplicationCommandOptionProperties(ApplicationCommandOptionType.SubCommand, "cancel", "Dừng báo giá tự động của bạn")
+            }
+        };
+
         yield return new SlashCommandProperties("help", "Hiển thị các lệnh có sẵn");
     }
+
+    private static ApplicationCommandOptionProperties[] GetAutoPriceOptions() =>
+    [
+        new ApplicationCommandOptionProperties(ApplicationCommandOptionType.String, "symbols", "Một hoặc nhiều mã, cách nhau bằng dấu phẩy")
+        {
+            Required = true
+        },
+        new ApplicationCommandOptionProperties(ApplicationCommandOptionType.Integer, "seconds", "Khoảng thời gian, tối thiểu 60 giây (mặc định 60)")
+    ];
 }
