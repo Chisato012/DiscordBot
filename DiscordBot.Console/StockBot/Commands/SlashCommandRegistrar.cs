@@ -83,7 +83,8 @@ public static class SlashCommandRegistrar
                 {
                     Options = GetAutoPriceOptions()
                 },
-                new ApplicationCommandOptionProperties(ApplicationCommandOptionType.SubCommand, "cancel", "Dừng báo giá tự động của bạn")
+                new ApplicationCommandOptionProperties(ApplicationCommandOptionType.SubCommand, "cancel", "Dừng báo giá tự động của bạn"),
+                new ApplicationCommandOptionProperties(ApplicationCommandOptionType.SubCommand, "cancelall", "Dừng tất cả tiến trình báo giá tự động")
             }
         };
 

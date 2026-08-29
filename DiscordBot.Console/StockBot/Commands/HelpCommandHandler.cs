@@ -12,6 +12,7 @@ public sealed class HelpCommandHandler
         "`/auprice start symbols:<mã> [seconds:<giây>]` - Đăng kí báo giá tự động (mặc định và tối thiểu là 60 giây).\n" +
         "`/auprice edit symbols:<mã> [seconds:<giây>]` - Thay đổi báo giá tự động của bạn.\n" +
         "`/auprice cancel` - Dừng báo giá tự động của bạn.\n" +
+        "`/auprice cancelall` - Dừng tất cả tiến trình báo giá tự động.\n" +
         "`/help` - Hiển thị hướng dẫn này.";
 
     public Task HandleAsync(SlashCommandInteraction interaction)

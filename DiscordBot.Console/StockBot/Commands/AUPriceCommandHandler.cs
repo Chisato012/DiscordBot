@@ -16,6 +16,7 @@ public sealed partial class AUPriceCommandHandler : IDisposable
     private const int MinimumIntervalSeconds = 60;
     private const int MaximumSymbols = 10;
     private readonly ConcurrentDictionary<ulong, PriceSubscription> _subscriptions = new();
+    private readonly object _subscriptionsLock = new();
     private readonly StockPriceService _stockPriceService;
 
     public AUPriceCommandHandler(StockPriceService stockPriceService) => _stockPriceService = stockPriceService;
@@ -32,6 +33,7 @@ public sealed partial class AUPriceCommandHandler : IDisposable
                 "start" => Start(interaction, restClient, subcommand),
                 "edit" => Edit(interaction, restClient, subcommand),
                 "cancel" => Cancel(interaction.User.Id),
+                "cancelall" => CancelAll(),
                 _ => "Lệnh không hợp lệ. Dùng `/auprice start`, `/auprice edit` hoặc `/auprice cancel`."
             };
             await UpdateResponseAsync(interaction, restClient, content);
@@ -45,41 +47,73 @@ public sealed partial class AUPriceCommandHandler : IDisposable
 
     private string Start(SlashCommandInteraction interaction, RestClient restClient, ApplicationCommandInteractionDataOption? subcommand)
     {
-        if (_subscriptions.ContainsKey(interaction.User.Id))
-            return $"Đăng kí thành công tự báo giá với **{string.Join(", ", _subscriptions[interaction.User.Id].Symbols)}**. Dùng `/auprice edit` để đổi hoặc `/auprice cancel` để dừng.";
         if (!TryCreateSubscription(interaction, restClient, subcommand, out PriceSubscription? subscription, out string error))
             return error;
-        if (!_subscriptions.TryAdd(interaction.User.Id, subscription))
+
+        lock (_subscriptionsLock)
         {
-            subscription.Cancellation.Dispose();
-            return "Bạn đã đăng kí báo giá tự động. Dùng `/auprice edit` để đổi hoặc `/auprice cancel` để dừng.";
+            if (_subscriptions.TryGetValue(interaction.User.Id, out PriceSubscription? existingSubscription))
+            {
+                subscription.Cancellation.Dispose();
+                return $"Đăng kí thành công tự báo giá với **{string.Join(", ", existingSubscription.Symbols)}**. Dùng `/auprice edit` để đổi hoặc `/auprice cancel` để dừng.";
+            }
+
+            _subscriptions[interaction.User.Id] = subscription;
+            subscription.Runner = RunSubscriptionAsync(interaction.User.Id, subscription);
         }
-        subscription.Runner = RunSubscriptionAsync(interaction.User.Id, subscription);
         return $"Đã bật báo giá tự động cho **{string.Join(", ", subscription.Symbols)}** mỗi **{subscription.Interval.TotalSeconds:0} giây**. Dùng `/auprice edit` để thay đổi hoặc `/auprice cancel` để dừng.";
     }
 
     private string Edit(SlashCommandInteraction interaction, RestClient restClient, ApplicationCommandInteractionDataOption? subcommand)
     {
-        if (!_subscriptions.TryGetValue(interaction.User.Id, out PriceSubscription? previousSubscription))
-            return "Bạn chưa đăng kí báo giá tự động. Dùng `/auprice start` để tạo mới.";
+        PriceSubscription previousSubscription;
+        lock (_subscriptionsLock)
+        {
+            if (!_subscriptions.TryGetValue(interaction.User.Id, out PriceSubscription? foundSubscription) || foundSubscription is null)
+                return "Bạn chưa đăng kí báo giá tự động. Dùng `/auprice start` để tạo mới.";
+            previousSubscription = foundSubscription;
+        }
+
         if (!TryCreateSubscription(interaction, restClient, subcommand, out PriceSubscription? subscription, out string error))
             return error;
-        if (!_subscriptions.TryUpdate(interaction.User.Id, subscription, previousSubscription))
+
+        lock (_subscriptionsLock)
         {
-            subscription.Cancellation.Dispose();
-            return "Không thể thay đổi báo giá tự động vì một lệnh khác vừa được xử lý. Hãy thử lại.";
+            if (!_subscriptions.TryGetValue(interaction.User.Id, out PriceSubscription? currentSubscription) || currentSubscription != previousSubscription)
+            {
+                subscription.Cancellation.Dispose();
+                return "Không thể thay đổi báo giá tự động vì một lệnh khác vừa được xử lý. Hãy thử lại.";
+            }
+
+            _subscriptions[interaction.User.Id] = subscription;
+            previousSubscription.Cancellation.Cancel();
+            subscription.Runner = RunSubscriptionAsync(interaction.User.Id, subscription);
         }
-        previousSubscription.Cancellation.Cancel();
-        subscription.Runner = RunSubscriptionAsync(interaction.User.Id, subscription);
         return $"Đã cập nhật báo giá tự động: **{string.Join(", ", subscription.Symbols)}**, mỗi **{subscription.Interval.TotalSeconds:0} giây**.";
     }
 
     private string Cancel(ulong userId)
     {
-        if (!_subscriptions.TryRemove(userId, out PriceSubscription? subscription))
-            return "Bạn không có báo giá tự động nào đang chạy.";
-        subscription.Cancellation.Cancel();
+        lock (_subscriptionsLock)
+        {
+            if (!_subscriptions.TryRemove(userId, out PriceSubscription? subscription))
+                return "Bạn không có báo giá tự động nào đang chạy.";
+            subscription.Cancellation.Cancel();
+        }
         return $"Đã dừng báo giá tự động của bạn (User Id: {userId}).";
+    }
+
+    private string CancelAll()
+    {
+        int count;
+        lock (_subscriptionsLock)
+        {
+            count = _subscriptions.Count;
+            foreach (PriceSubscription subscription in _subscriptions.Values)
+                subscription.Cancellation.Cancel();
+            _subscriptions.Clear();
+        }
+        return $"Đã dừng tất cả tiến trình báo giá tự động ({count} đăng kí).";
     }
 
     private bool TryCreateSubscription(SlashCommandInteraction interaction, RestClient restClient, ApplicationCommandInteractionDataOption? subcommand, [NotNullWhen(true)] out PriceSubscription? subscription, out string error)
@@ -137,7 +171,8 @@ public sealed partial class AUPriceCommandHandler : IDisposable
         }
         finally
         {
-            ((ICollection<KeyValuePair<ulong, PriceSubscription>>)_subscriptions).Remove(new(userId, subscription));
+            lock (_subscriptionsLock)
+                ((ICollection<KeyValuePair<ulong, PriceSubscription>>)_subscriptions).Remove(new(userId, subscription));
             subscription.Cancellation.Dispose();
         }
     }
@@ -173,8 +208,11 @@ public sealed partial class AUPriceCommandHandler : IDisposable
 
     public void Dispose()
     {
-        foreach (PriceSubscription subscription in _subscriptions.Values) subscription.Cancellation.Cancel();
-        _subscriptions.Clear();
+        lock (_subscriptionsLock)
+        {
+            foreach (PriceSubscription subscription in _subscriptions.Values) subscription.Cancellation.Cancel();
+            _subscriptions.Clear();
+        }
     }
 
     [GeneratedRegex("^[A-Z0-9]{1,10}$")]
