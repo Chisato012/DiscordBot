@@ -17,6 +17,8 @@ Dự án này tham khảo từ nhiều nguồn khác nhau:
 
 ## ⚙️ Công nghệ sử dụng
 * .NET 10 (Native AOT)
+----
+# Lưu ý khi tự build và phát hành bằng GA
 
 ## 🏗️ Build tự động
 
